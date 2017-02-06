@@ -13,7 +13,7 @@
 
 int NUM_THREADS = 4;
 int NUM_STEPS;
-int TOTAL_STEPS = 10000;
+int TOTAL_STEPS = 1000000;
 long double A_location = 0;
 long double B_location = 1;
 long double STEP_SIZE = 0;
