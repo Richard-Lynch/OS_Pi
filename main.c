@@ -1,3 +1,9 @@
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 600
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +19,8 @@ long double B_location = 1;
 long double STEP_SIZE = 0;
 long double A_CURR = 0;
 long double AREA_TOTAL= 0;
+
+struct timespec diff_t(struct timespec start, struct timespec end);
 
 long double function (long double x){
     long double result = 4.00L/(1.00L+(x*x));
@@ -69,6 +77,8 @@ void *intergrate(void *bound){
 
 int main(int argc, const char* argv[]){
     printf("hello\n");
+struct timespec time1, time2;
+
 
 // read args
     int max_threads;
@@ -80,7 +90,8 @@ int main(int argc, const char* argv[]){
         exit(1);
     }
 
-    long double results[max_threads];
+    long int results_s[max_threads];
+    long int results_ns[max_threads];
     
 for(int i = 0; i < max_threads; i++){
 // initilise vals
@@ -100,7 +111,8 @@ for(int i = 0; i < max_threads; i++){
 
 // start clock
     clock_t start = clock();
-    printf("Creating threads.\n");
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+printf("Creating threads.\n");
 // create first thread
     for(t = 0; t<NUM_THREADS; t++){
     // create bounds for curr thread
@@ -132,6 +144,7 @@ for(int i = 0; i < max_threads; i++){
     }
     //printf("Finished Joining threads\n");
 // stop the cock
+clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
     clock_t diff = clock() - start;
 
 // output result
@@ -143,17 +156,46 @@ for(int i = 0; i < max_threads; i++){
     printf("Result: %Lf\n", AREA_TOTAL);
 // output time
     long double msec = diff * 1000.00 / CLOCKS_PER_SEC;
-    printf("Time taken %d seconds %d milliseconds \n", (int)msec/1000, (int)msec%1000);
-    printf("Time taken %Lf Miliseconds\n", msec);
-    results[i] = msec;
+
+    printf("Time taken %ld Seconds %ld Nanoseconds \n", (long int)diff_t(time1,time2).tv_sec, (long int)diff_t(time1,time2).tv_nsec);
+    printf("Time taken %Lf Milliseconds\n", msec);
+    results_s[i] = (long int)diff_t(time1,time2).tv_sec;
+    results_ns[i] = (long int)diff_t(time1,time2).tv_nsec;
 }
+
+FILE *f = fopen("output.txt", "w");
+if (f == NULL)
+{
+    printf("Error opening file!\n");
+    exit(1);
+}
+
+
     printf("\n----Summary----\n");
-    printf("%d thread : %Lf milliseconds\n", 1, results[0]);
+	fprintf(f, "%ld, %ld\n", results_s[0], results_ns[0]);
+    printf("%d thread : %ld seconds: %ld nanoseconds\n", 1, results_s[0], results_ns[0]);
     for(int j = 1; j<max_threads; j++){
-        printf("%d threads: %Lf milliseconds\n", j+1, results[j]);
+	fprintf(f, "%ld, %ld\n", results_s[j], results_ns[j]);
+
+	//fprintf(f, "%ld,\n", results[j]);
+    printf("%d thread : %ld seconds: %ld nanoseconds\n", j+1, results_s[j], results_ns[j]);
+       // printf("%d threads: %ld milliseconds\n", j+1, results[j]);
     }
     return 0;
 }
 
 
+
+struct timespec diff_t(struct timespec start, struct timespec end)
+{
+	struct timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
+}
 
